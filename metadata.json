@@ -1,0 +1,6 @@
+{
+  "name": "Local Commerce Operating System",
+  "description": "نظام تشغيل متكامل للتجارة المحلية وإدارة طلبات السوبر ماركت والمخزون والتوصيل والتسوية المالية.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
