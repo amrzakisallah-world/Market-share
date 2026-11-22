@@ -37,6 +37,12 @@ export type RemittanceStatus =
   | 'pending_platform_confirmation'
   | 'settled';
 
+export type RemittanceVerificationStage =
+  | 'declared_by_courier'
+  | 'confirmed_by_shop'
+  | 'closed_by_admin'
+  | 'admin_override_closed';
+
 export interface OrderRemittanceRecord {
   mode: CashRemittanceMode;
   shopTransferChannel?: RemittanceChannel;
@@ -48,6 +54,8 @@ export interface OrderRemittanceRecord {
   instapayReference?: string;
   note?: string;
   status: RemittanceStatus;
+  verificationStage?: RemittanceVerificationStage;
+  adminOverrideReason?: string;
   submittedBy: string;
   submittedAt: string;
   shopConfirmedAt?: string;
@@ -174,6 +182,7 @@ export interface CustomerProfile {
   phone: string;
   address: string;
   area: string;
+  isDemoFixture?: boolean;
   createdAt: string;
 }
 
@@ -286,6 +295,9 @@ export interface Order {
   cancellationReason?: string;
   deliveryFailureReason?: string;
   rating?: OrderCustomerRating;
+  /** Hashed secret token authorizing customer self-service tracking/cancel/mod-response/rating */
+  accessTokenHash?: string;
+  accessTokenSalt?: string;
   createdAt: string;
   confirmedAt?: string;
   preparingAt?: string;
@@ -304,6 +316,9 @@ export interface ShopDailyEntry {
   category: string;
   description: string;
   amountEGP: number;
+  receiptNumber?: string;
+  supplierName?: string;
+  invoiceRef?: string;
   relatedProductId?: string;
   relatedProductName?: string;
   quantityRestocked?: number;
@@ -401,9 +416,78 @@ export interface AuthStateRecord {
   adminPasscodeSalt?: string;
 }
 
+export type OperationalMode = 'experiment' | 'live';
+
+export interface RuntimeConfig {
+  mode: OperationalMode;
+  pilotNotice: string;
+  updatedAt: string;
+  updatedBy?: string;
+}
+
+export type AuditCategory =
+  | 'auth'
+  | 'security'
+  | 'order'
+  | 'inventory'
+  | 'pos_shift'
+  | 'finance'
+  | 'admin'
+  | 'backup';
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  actorRole: UserRole | 'pos_staff' | 'system';
+  actorName: string;
+  shopId?: string;
+  category: AuditCategory;
+  action: string;
+  targetId?: string;
+  summary: string;
+  metadata?: Record<string, string | number | boolean>;
+}
+
+export interface BackupSnapshotInfo {
+  filename: string;
+  createdAt: string;
+  sizeBytes: number;
+  label?: string;
+}
+
+export interface OwnerOperationalMemory {
+  mode: OperationalMode;
+  pilotNotice: string;
+  lastCompletedAction: {
+    summary: string;
+    actorName: string;
+    timestamp: string;
+    category: AuditCategory;
+  } | null;
+  pendingBacklog: {
+    newOrdersCount: number;
+    preparingOrReadyOrdersCount: number;
+    pendingCustomerApprovalsCount: number;
+    pendingShopRemittanceConfirmationsCount: number;
+    pendingPlatformRemittancesCount: number;
+    unsettledCompletedOrdersCount: number;
+    openShiftsCount: number;
+    lowStockItemsCount: number;
+  };
+  suggestedNextAction: {
+    title: string;
+    description: string;
+    targetRole: 'customer' | 'shop' | 'volunteer' | 'admin';
+    targetShopId?: string;
+    urgent: boolean;
+  };
+  lastBackupAt?: string;
+}
+
 export interface CommerceDatabase {
   version: number;
   nextOrderSeq: number;
+  nextPosReceiptSeq?: number;
   shops: Shop[];
   masterProducts: MasterProduct[];
   shopListings: ShopProductListing[];
@@ -417,6 +501,9 @@ export interface CommerceDatabase {
   shopShiftSessions: ShopShiftSession[];
   distributionRules: DistributionRules;
   auth: AuthStateRecord;
+  runtimeConfig?: RuntimeConfig;
+  auditLogs?: AuditLogEntry[];
+  lastBackupAt?: string;
 }
 
 export interface SimulatedActor {
